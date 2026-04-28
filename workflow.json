@@ -1,0 +1,129 @@
+{
+  "name": "Teknik Doküman Sadeleştirme AI",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sadele",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "webhookId": "sadele-001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ 'Bearer ' + $json.body.groq_key }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"llama-3.1-8b-instant\", \"messages\": [ { \"role\": \"system\", \"content\": \"Sen bir teknik doküman sadeleştirme uzmanısın. Görevin, verilen karmaşık teknik metni konudan hiç anlamayan lise seviyesindeki bir öğrencinin rahatça anlayabileceği günlük Türkçeye çevirmektir. Kurallar: 1) Teknik terimleri aynen kullanma, bunun yerine günlük hayattan basit benzetmeler ve metaforlar kullan. 2) Her kavramı kısa ve net cümlelerle açıkla. 3) Metni hikayeleştirerek anlat, tüm jargonları tamamen temizle. 4) Sadece sadeleştir, yorum veya ek bilgi ekleme.\" }, { \"role\": \"user\", \"content\": \"Şu teknik metni sadeleştir: \" + $json.body.text } ] } }}",
+        "options": {}
+      },
+      "id": "groq-001",
+      "name": "Groq AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rjprpmzenyquxjmivibj.supabase.co/rest/v1/documents",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqcHJwbXplbnlxdXhqbWl2aWJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzMyOTczNSwiZXhwIjoyMDkyOTA1NzM1fQ.lS8YyVyWHbWDZTbymhQIwhKctxJ3gZNcr93SweF_cXw"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJqcHJwbXplbnlxdXhqbWl2aWJqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzMyOTczNSwiZXhwIjoyMDkyOTA1NzM1fQ.lS8YyVyWHbWDZTbymhQIwhKctxJ3gZNcr93SweF_cXw"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "original_text",
+              "value": "={{ $('Webhook').item.json.body.text }}"
+            },
+            {
+              "name": "simplified_text",
+              "value": "={{ $json.choices[0].message.content }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "supabase-001",
+      "name": "Supabase Kaydet",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"simplified\": $('Groq AI').item.json.choices[0].message.content, \"status\": \"success\" } }}",
+        "options": {}
+      },
+      "id": "respond-001",
+      "name": "Sonuç Döndür",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [950, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{"node": "Groq AI", "type": "main", "index": 0}]]
+    },
+    "Groq AI": {
+      "main": [[{"node": "Supabase Kaydet", "type": "main", "index": 0}]]
+    },
+    "Supabase Kaydet": {
+      "main": [[{"node": "Sonuç Döndür", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2",
+  "meta": {
+    "instanceId": "teknik-sadele-ai-2026"
+  },
+  "id": "workflow-teknik-sadele",
+  "tags": []
+}
